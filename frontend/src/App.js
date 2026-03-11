@@ -34,7 +34,9 @@ function App() {
                 <Route index element={<Navigate to="/dashboard" />} />
                 <Route path="dashboard" element={<UserDashboard />} />
                 <Route path="tasks" element={<TasksPage />} />
-                <Route path="projects" element={<ProjectsPage />} />
+                <Route path="projects" element={
+                    <PrivateRoute roles={['Manager', 'User']}><ProjectsPage /></PrivateRoute>
+                } />
 
                 {/* Manager Routes */}
                 <Route path="manager" element={

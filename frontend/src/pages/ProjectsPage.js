@@ -6,7 +6,9 @@ import { managerAPI, projectAPI, taskAPI } from '../services/api';
 const today = () => new Date().toISOString().split('T')[0];
 
 export default function ProjectsPage() {
-    const { isManager, user } = useAuth();
+    const { user } = useAuth();
+    const canManageProjects = user?.role === 'Manager';
+    const canViewProjects = canManageProjects || user?.role === 'User';
     const [projects, setProjects] = useState([]);
     const [team, setTeam] = useState([]);
     const [categories, setCategories] = useState([]);
@@ -39,8 +41,8 @@ export default function ProjectsPage() {
         setLoading(true);
         try {
             const projectPromise = projectAPI.getAll();
-            const teamPromise = isManager ? managerAPI.getTeam() : Promise.resolve({ data: { data: [] } });
-            const categoriesPromise = isManager ? taskAPI.getCategories() : Promise.resolve({ data: { data: [] } });
+            const teamPromise = canManageProjects ? managerAPI.getTeam() : Promise.resolve({ data: { data: [] } });
+            const categoriesPromise = canManageProjects ? taskAPI.getCategories() : Promise.resolve({ data: { data: [] } });
 
             const [projectRes, teamRes, categoriesRes] = await Promise.all([
                 projectPromise,
@@ -56,7 +58,7 @@ export default function ProjectsPage() {
         } finally {
             setLoading(false);
         }
-    }, [isManager]);
+    }, [canManageProjects]);
 
     useEffect(() => {
         loadData();
@@ -133,13 +135,17 @@ export default function ProjectsPage() {
         }
     };
 
+    if (!canViewProjects) {
+        return <div className="empty-state"><p>Projects are available only for managers and assigned users.</p></div>;
+    }
+
     if (loading) return <div className="empty-state"><p>Loading projects...</p></div>;
 
-    const visibleProjects = isManager ? projects : assignedProjects;
+    const visibleProjects = canManageProjects ? projects : assignedProjects;
 
     return (
         <div>
-            {isManager && (
+            {canManageProjects && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, gap: 12, flexWrap: 'wrap' }}>
                     <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>
                         Manage projects and assign work to your resource persons.
@@ -156,18 +162,18 @@ export default function ProjectsPage() {
             )}
 
             <div className="stats-grid">
-                <div className="stat-card"><div className="stat-card-header"><div className="stat-card-icon blue"><FolderKanban size={20} /></div></div><div className="stat-card-value">{visibleProjects.length}</div><div className="stat-card-label">{isManager ? 'Managed Projects' : 'Assigned Projects'}</div></div>
+                <div className="stat-card"><div className="stat-card-header"><div className="stat-card-icon blue"><FolderKanban size={20} /></div></div><div className="stat-card-value">{visibleProjects.length}</div><div className="stat-card-label">{canManageProjects ? 'Managed Projects' : 'Assigned Projects'}</div></div>
                 <div className="stat-card"><div className="stat-card-header"><div className="stat-card-icon green"><FolderKanban size={20} /></div></div><div className="stat-card-value">{visibleProjects.filter(p => p.Status !== 'Completed').length}</div><div className="stat-card-label">Active Projects</div></div>
             </div>
 
             <div className="data-section">
                 <div className="data-section-header">
-                    <h3>{isManager ? `Projects (${visibleProjects.length})` : `Assigned Projects (${visibleProjects.length})`}</h3>
+                    <h3>{canManageProjects ? `Projects (${visibleProjects.length})` : `Assigned Projects (${visibleProjects.length})`}</h3>
                 </div>
                 {visibleProjects.length === 0 ? (
                     <div className="empty-state">
                         <FolderKanban size={40} />
-                        <p>{isManager ? 'No projects yet. Create one and assign it to a resource person.' : 'No projects have been assigned to you yet.'}</p>
+                        <p>{canManageProjects ? 'No projects yet. Create one and assign it to a resource person.' : 'No projects have been assigned to you yet.'}</p>
                     </div>
                 ) : (
                     <table className="data-table">
@@ -179,7 +185,7 @@ export default function ProjectsPage() {
                                 <th>Priority</th>
                                 <th>Status</th>
                                 <th>Open Tasks</th>
-                                {isManager && <th>Actions</th>}
+                                {canManageProjects && <th>Actions</th>}
                             </tr>
                         </thead>
                         <tbody>
@@ -198,7 +204,7 @@ export default function ProjectsPage() {
                                     <td><span className={`badge badge-${project.Priority?.toLowerCase()}`}>{project.Priority}</span></td>
                                     <td><span className={`badge badge-${project.Status?.toLowerCase().replace(' ', '')}`}>{project.Status}</span></td>
                                     <td style={{ fontFamily: 'var(--font-mono)' }}>{project.OpenTaskCount || 0}</td>
-                                    {isManager && (
+                                    {canManageProjects && (
                                         <td>
                                             <button className="btn btn-ghost btn-xs" onClick={() => openProjectModal(project)}>
                                                 <Edit2 size={14} />

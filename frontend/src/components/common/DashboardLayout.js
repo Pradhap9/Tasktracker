@@ -94,6 +94,7 @@ export default function DashboardLayout() {
     const [notifications, setNotifications] = useState([]);
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const hasUserInteracted = useRef(false);
+    const canAccessProjects = user?.role === 'Manager' || user?.role === 'User';
 
     // Unlock audio on ANY user interaction
     useEffect(() => {
@@ -211,9 +212,11 @@ export default function DashboardLayout() {
                     <NavLink to="/tasks" className={({ isActive }) => 'nav-item ' + (isActive ? 'active' : '')}>
                         <ListTodo size={18} /> My Tasks
                     </NavLink>
-                    <NavLink to="/projects" className={({ isActive }) => 'nav-item ' + (isActive ? 'active' : '')}>
-                        <FolderKanban size={18} /> Projects
-                    </NavLink>
+                    {canAccessProjects && (
+                        <NavLink to="/projects" className={({ isActive }) => 'nav-item ' + (isActive ? 'active' : '')}>
+                            <FolderKanban size={18} /> Projects
+                        </NavLink>
+                    )}
 
                     {isManager && (
                         <>
