@@ -8,6 +8,7 @@ const morgan = require('morgan');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
+const fs = require('fs');
 require('dotenv').config();
 
 const { getPool } = require('./config/database');
@@ -72,11 +73,23 @@ app.get('/api/health', (req, res) => {
     res.json({ success: true, message: 'Task Tracker API is running', timestamp: new Date().toISOString() });
 });
 
-// Serve React frontend in production
-if (process.env.NODE_ENV === 'production') {
-    app.use(express.static(path.join(__dirname, '../frontend/build')));
+// Serve React frontend only when a local build exists.
+const frontendBuildPath = path.join(__dirname, '../frontend/build');
+const frontendIndexPath = path.join(frontendBuildPath, 'index.html');
+
+if (process.env.NODE_ENV === 'production' && fs.existsSync(frontendIndexPath)) {
+    app.use(express.static(frontendBuildPath));
     app.get('*', (req, res) => {
-        res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'));
+        res.sendFile(frontendIndexPath);
+    });
+} else {
+    app.get('/', (req, res) => {
+        res.json({
+            success: true,
+            message: 'Task Tracker API is running',
+            frontendServed: false,
+            timestamp: new Date().toISOString()
+        });
     });
 }
 
