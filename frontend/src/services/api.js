@@ -49,9 +49,16 @@ export const managerAPI = {
     getTeamTasks: (params) => api.get('/manager/team-tasks', { params }),
     approveTask: (taskId, data) => api.put('/manager/approve-task/' + taskId, data),
     approveHours: (taskId, data) => api.put('/manager/approve-hours/' + taskId, data),
+    assignTask: (data) => api.post('/manager/assign-task', data),
     getEscalations: () => api.get('/manager/escalations'),
     dismissEscalation: (id) => api.put('/manager/escalations/' + id + '/dismiss'),
     exportData: (format, params) => api.get('/manager/export/' + format, { params, responseType: 'blob' }),
+};
+
+export const projectAPI = {
+    getAll: () => api.get('/projects'),
+    create: (data) => api.post('/projects', data),
+    update: (id, data) => api.put('/projects/' + id, data),
 };
 
 export const adminAPI = {

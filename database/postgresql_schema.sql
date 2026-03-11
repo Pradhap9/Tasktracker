@@ -32,10 +32,25 @@ CREATE TABLE IF NOT EXISTS tasktracker.task_categories (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS tasktracker.projects (
+    project_id BIGSERIAL PRIMARY KEY,
+    project_name VARCHAR(150) NOT NULL,
+    description TEXT,
+    status VARCHAR(30) NOT NULL DEFAULT 'Planned',
+    priority VARCHAR(20) NOT NULL DEFAULT 'Medium',
+    start_date DATE,
+    end_date DATE,
+    manager_id BIGINT NOT NULL REFERENCES tasktracker.users(user_id) ON DELETE CASCADE,
+    assigned_to BIGINT REFERENCES tasktracker.users(user_id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS tasktracker.tasks (
     task_id BIGSERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL REFERENCES tasktracker.users(user_id) ON DELETE CASCADE,
     category_id BIGINT REFERENCES tasktracker.task_categories(category_id) ON DELETE SET NULL,
+    project_id BIGINT REFERENCES tasktracker.projects(project_id) ON DELETE SET NULL,
     task_date DATE NOT NULL,
     task_title VARCHAR(255) NOT NULL,
     task_description TEXT,
@@ -46,6 +61,8 @@ CREATE TABLE IF NOT EXISTS tasktracker.tasks (
     approval_status VARCHAR(30) NOT NULL DEFAULT 'Pending',
     hours_approval_status VARCHAR(30) NOT NULL DEFAULT 'Pending',
     due_date DATE,
+    assigned_by BIGINT REFERENCES tasktracker.users(user_id) ON DELETE SET NULL,
+    assigned_at TIMESTAMPTZ,
     approved_by BIGINT REFERENCES tasktracker.users(user_id) ON DELETE SET NULL,
     approval_date TIMESTAMPTZ,
     approval_comments TEXT,
@@ -104,6 +121,10 @@ CREATE INDEX IF NOT EXISTS idx_tasks_approval_status ON tasktracker.tasks (appro
 CREATE INDEX IF NOT EXISTS idx_users_manager_id ON tasktracker.users (manager_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_user_created ON tasktracker.notifications (user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_escalation_log_manager_date ON tasktracker.escalation_log (manager_id, escalation_date DESC);
+CREATE INDEX IF NOT EXISTS idx_projects_manager_id ON tasktracker.projects (manager_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_projects_assigned_to ON tasktracker.projects (assigned_to, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_tasks_project_id ON tasktracker.tasks (project_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_assigned_by ON tasktracker.tasks (assigned_by);
 
 INSERT INTO tasktracker.roles (role_id, role_name)
 VALUES
@@ -126,7 +147,8 @@ VALUES
     ('ESCALATION_ENABLED', 'true', 'Enable or disable automatic escalation notifications'),
     ('TASK_WINDOW_START', '09:00', 'Task submission start time in IST'),
     ('TASK_WINDOW_END', '11:00', 'Task submission end time in IST'),
-    ('ESCALATION_TRIGGER_TIME', '11:01', 'Escalation trigger time in IST')
+    ('ESCALATION_TRIGGER_TIME', '11:01', 'Escalation trigger time in IST'),
+    ('NOTIFICATION_SOUND_ENABLED', 'true', 'Play a sound when new notifications arrive')
 ON CONFLICT (config_key) DO UPDATE SET
     config_value = EXCLUDED.config_value,
     description = EXCLUDED.description;

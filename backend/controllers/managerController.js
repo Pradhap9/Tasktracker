@@ -3,6 +3,32 @@ const { Parser } = require('json2csv');
 const { query } = require('../config/database');
 const { getCurrentDateInTimeZone } = require('../utils/time');
 
+async function getAssignableUser(currentUser, targetUserId) {
+    const params = [targetUserId];
+    let whereClause = `
+        u.user_id = $1
+        AND u.is_active = TRUE
+        AND r.role_name = 'User'
+    `;
+
+    if (currentUser.roleName !== 'Admin') {
+        params.push(currentUser.userId);
+        whereClause += ` AND u.manager_id = $2`;
+    }
+
+    const result = await query(`
+        SELECT
+            u.user_id AS "UserID",
+            u.full_name AS "FullName"
+        FROM tasktracker.users u
+        JOIN tasktracker.roles r ON u.role_id = r.role_id
+        WHERE ${whereClause}
+        LIMIT 1
+    `, params);
+
+    return result.rows[0] || null;
+}
+
 function buildManagerTaskFilters(managerId, filters) {
     const params = [managerId];
     const clauses = ['u.manager_id = $1'];
@@ -80,13 +106,18 @@ const getTeamTasks = async (req, res) => {
                 t.hours_approval_status AS "HoursApprovalStatus",
                 t.due_date AS "DueDate",
                 t.submitted_at AS "SubmittedAt",
+                t.assigned_by AS "AssignedBy",
                 u.full_name AS "UserName",
                 u.employee_code AS "EmployeeCode",
                 c.category_name AS "CategoryName",
-                c.color_code AS "ColorCode"
+                c.color_code AS "ColorCode",
+                p.project_name AS "ProjectName",
+                assigner.full_name AS "AssignedByName"
             FROM tasktracker.tasks t
             JOIN tasktracker.users u ON t.user_id = u.user_id
             LEFT JOIN tasktracker.task_categories c ON t.category_id = c.category_id
+            LEFT JOIN tasktracker.projects p ON t.project_id = p.project_id
+            LEFT JOIN tasktracker.users assigner ON t.assigned_by = assigner.user_id
             ${whereClause}
             ORDER BY t.task_date DESC, t.created_at DESC
             LIMIT $${params.length + 1} OFFSET $${params.length + 2}
@@ -146,6 +177,84 @@ const approveTask = async (req, res) => {
         res.json({ success: true, message: `Task ${approvalStatus.toLowerCase()} successfully.` });
     } catch (err) {
         console.error('[Manager] Approve error:', err);
+        res.status(500).json({ success: false, message: 'Internal server error.' });
+    }
+};
+
+const assignTaskToResource = async (req, res) => {
+    try {
+        const {
+            userId, projectId, categoryId, taskDate, taskTitle,
+            taskDescription, plannedHours, priority, dueDate
+        } = req.body;
+
+        if (!userId || !taskTitle || !taskDate) {
+            return res.status(400).json({ success: false, message: 'Assignee, task title, and task date are required.' });
+        }
+
+        const assignee = await getAssignableUser(req.user, userId);
+        if (!assignee) {
+            return res.status(403).json({ success: false, message: 'You can only assign tasks to your active resource persons.' });
+        }
+
+        if (projectId) {
+            const projectParams = [projectId];
+            let projectWhere = 'project_id = $1';
+            if (req.user.roleName !== 'Admin') {
+                projectParams.push(req.user.userId);
+                projectWhere += ' AND manager_id = $2';
+            }
+
+            const projectResult = await query(`
+                SELECT project_id AS "ProjectID"
+                FROM tasktracker.projects
+                WHERE ${projectWhere}
+                LIMIT 1
+            `, projectParams);
+
+            if (projectResult.rows.length === 0) {
+                return res.status(403).json({ success: false, message: 'You can only assign tasks within projects you manage.' });
+            }
+        }
+
+        const result = await query(`
+            INSERT INTO tasktracker.tasks (
+                user_id, category_id, project_id, task_date, task_title, task_description,
+                planned_hours, actual_hours, priority, status, approval_status,
+                approved_by, approval_date, approval_comments, due_date, assigned_by, assigned_at
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, 0, $8, 'Pending', 'Approved', $9, NOW(), 'Assigned by manager', $10, $9, NOW())
+            RETURNING task_id AS "TaskID"
+        `, [
+            userId,
+            categoryId || null,
+            projectId || null,
+            taskDate,
+            taskTitle,
+            taskDescription || null,
+            Number(plannedHours || 0),
+            priority || 'Medium',
+            req.user.userId,
+            dueDate || null
+        ]);
+
+        await query(`
+            INSERT INTO tasktracker.notifications (
+                user_id, title, message, notification_type, reference_type, reference_id
+            )
+            VALUES ($1, $2, $3, $4, $5, $6)
+        `, [
+            userId,
+            'New Task Assigned',
+            `${req.user.fullName} assigned you a task: "${taskTitle}".`,
+            'TaskAssignment',
+            'Task',
+            result.rows[0].TaskID
+        ]);
+
+        res.status(201).json({ success: true, message: 'Task assigned successfully.', data: result.rows[0] });
+    } catch (err) {
+        console.error('[Manager] Assign task error:', err);
         res.status(500).json({ success: false, message: 'Internal server error.' });
     }
 };
@@ -242,6 +351,7 @@ const exportTeamData = async (req, res) => {
                 t.task_title AS "TaskTitle",
                 t.task_description AS "TaskDescription",
                 c.category_name AS "CategoryName",
+                p.project_name AS "ProjectName",
                 t.planned_hours AS "PlannedHours",
                 t.actual_hours AS "ActualHours",
                 t.priority AS "Priority",
@@ -252,6 +362,7 @@ const exportTeamData = async (req, res) => {
             FROM tasktracker.tasks t
             JOIN tasktracker.users u ON t.user_id = u.user_id
             LEFT JOIN tasktracker.task_categories c ON t.category_id = c.category_id
+            LEFT JOIN tasktracker.projects p ON t.project_id = p.project_id
             ${whereClause}
             ORDER BY u.full_name, t.task_date DESC
         `, params);
@@ -349,6 +460,6 @@ const getManagerDashboardStats = async (req, res) => {
 };
 
 module.exports = {
-    getTeamMembers, getTeamTasks, approveTask, approveHours,
+    getTeamMembers, getTeamTasks, approveTask, assignTaskToResource, approveHours,
     getEscalations, dismissEscalation, exportTeamData, getManagerDashboardStats
 };

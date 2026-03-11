@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { notificationAPI } from '../../services/api';
 import {
     LayoutDashboard, ListTodo, Users, ShieldCheck, Settings, LogOut,
-    Bell, UserCheck, Download, ClipboardList, Menu, X, Volume2
+    Bell, UserCheck, Download, ClipboardList, Menu, X, FolderKanban
 } from 'lucide-react';
 
 // ── Audio context that persists across renders ────
@@ -93,10 +93,6 @@ export default function DashboardLayout() {
     const [showNotifications, setShowNotifications] = useState(false);
     const [notifications, setNotifications] = useState([]);
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [soundEnabled, setSoundEnabled] = useState(false);
-
-    const soundPlayedIds = useRef(new Set());
-    const isFirstLoad = useRef(true);
     const hasUserInteracted = useRef(false);
 
     // Unlock audio on ANY user interaction
@@ -106,6 +102,7 @@ export default function DashboardLayout() {
                 hasUserInteracted.current = true;
                 unlockAudio();
                 console.log('[Sound] User interacted - audio ready');
+                loadNotifications();
             }
         };
 
@@ -129,6 +126,7 @@ export default function DashboardLayout() {
         if (path.includes('/manager/team')) return 'Team Members';
         if (path.includes('/manager/export')) return 'Export Data';
         if (path.includes('/manager')) return 'Manager Dashboard';
+        if (path.includes('/projects')) return 'Projects';
         if (path.includes('/tasks')) return 'My Tasks';
         return 'Dashboard';
     };
@@ -139,42 +137,14 @@ export default function DashboardLayout() {
             const all = res.data.data || [];
             setNotifications(all);
 
-            // Find unread escalation notifications
-            const unreadEscalations = all.filter(
-                n => n.NotificationType === 'Escalation' && !n.IsRead && n.IsSoundPlayed === 0
+            const unreadNotificationsNeedingSound = all.filter(
+                n => !n.IsRead && n.IsSoundPlayed === 0
             );
 
-            if (isFirstLoad.current) {
-                isFirstLoad.current = false;
-
-                // On first load, if there are unread escalations, play sound
-                if (unreadEscalations.length > 0 && hasUserInteracted.current) {
-                    console.log('[Sound] First load - ' + unreadEscalations.length + ' unread escalation(s), playing sound');
-                    playAlertSound();
-                    setSoundEnabled(true);
-
-                    unreadEscalations.forEach(n => soundPlayedIds.current.add(n.NotificationID));
-
-                    try { await notificationAPI.markSoundPlayed(); } catch (e) { /* ignore */ }
-                } else {
-                    // Mark existing ones as seen locally
-                    unreadEscalations.forEach(n => soundPlayedIds.current.add(n.NotificationID));
-                }
-            } else {
-                // Subsequent polls: find NEW escalations we haven't seen
-                const newOnes = unreadEscalations.filter(
-                    n => !soundPlayedIds.current.has(n.NotificationID)
-                );
-
-                if (newOnes.length > 0) {
-                    console.log('[Sound] ' + newOnes.length + ' NEW escalation(s) detected, playing sound');
-                    playAlertSound();
-                    setSoundEnabled(true);
-
-                    newOnes.forEach(n => soundPlayedIds.current.add(n.NotificationID));
-
-                    try { await notificationAPI.markSoundPlayed(); } catch (e) { /* ignore */ }
-                }
+            if (unreadNotificationsNeedingSound.length > 0 && hasUserInteracted.current) {
+                console.log('[Sound] ' + unreadNotificationsNeedingSound.length + ' unread notification(s), playing sound');
+                playAlertSound();
+                try { await notificationAPI.markSoundPlayed(); } catch (e) { /* ignore */ }
             }
         } catch (e) { /* ignore */ }
     }, []);
@@ -191,13 +161,6 @@ export default function DashboardLayout() {
         await notificationAPI.markAllAsRead();
         fetchUnreadCount();
         loadNotifications();
-    };
-
-    // Test sound button
-    const handleTestSound = () => {
-        unlockAudio();
-        playAlertSound();
-        setSoundEnabled(true);
     };
 
     // Poll every 30 seconds
@@ -247,6 +210,9 @@ export default function DashboardLayout() {
                     </NavLink>
                     <NavLink to="/tasks" className={({ isActive }) => 'nav-item ' + (isActive ? 'active' : '')}>
                         <ListTodo size={18} /> My Tasks
+                    </NavLink>
+                    <NavLink to="/projects" className={({ isActive }) => 'nav-item ' + (isActive ? 'active' : '')}>
+                        <FolderKanban size={18} /> Projects
                     </NavLink>
 
                     {isManager && (
@@ -305,16 +271,6 @@ export default function DashboardLayout() {
                         <h2>{pageTitle()}</h2>
                     </div>
                     <div className="topbar-right">
-                        {/* Test Sound Button */}
-                        <button
-                            className="topbar-btn"
-                            onClick={handleTestSound}
-                            title="Test alert sound"
-                            style={{ color: soundEnabled ? 'var(--accent-green)' : 'var(--text-muted)' }}
-                        >
-                            <Volume2 size={18} />
-                        </button>
-
                         {/* Notifications */}
                         <button
                             className="topbar-btn"

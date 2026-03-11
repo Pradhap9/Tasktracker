@@ -1,17 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { taskAPI } from '../services/api';
+import { projectAPI, taskAPI } from '../services/api';
 import { Plus, Edit2, Trash2, X, ListTodo, Filter } from 'lucide-react';
 
 export default function TasksPage() {
     const [tasks, setTasks] = useState([]);
     const [categories, setCategories] = useState([]);
+    const [projects, setProjects] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [editingTask, setEditingTask] = useState(null);
     const [filters, setFilters] = useState({ startDate: '', endDate: '', status: '' });
     const [form, setForm] = useState({
         taskDate: new Date().toISOString().split('T')[0],
-        taskTitle: '', taskDescription: '', categoryId: '', plannedHours: '',
+        taskTitle: '', taskDescription: '', categoryId: '', projectId: '', plannedHours: '',
         actualHours: '', priority: 'Medium', status: 'Pending', dueDate: ''
     });
 
@@ -33,13 +34,20 @@ export default function TasksPage() {
         } catch (e) { console.error(e); }
     };
 
-    useEffect(() => { loadTasks(); loadCategories(); }, [loadTasks]);
+    const loadProjects = async () => {
+        try {
+            const res = await projectAPI.getAll();
+            setProjects(res.data.data || []);
+        } catch (e) { console.error(e); }
+    };
+
+    useEffect(() => { loadTasks(); loadCategories(); loadProjects(); }, [loadTasks]);
 
     const openCreate = () => {
         setEditingTask(null);
         setForm({
             taskDate: new Date().toISOString().split('T')[0],
-            taskTitle: '', taskDescription: '', categoryId: '', plannedHours: '',
+            taskTitle: '', taskDescription: '', categoryId: '', projectId: '', plannedHours: '',
             actualHours: '', priority: 'Medium', status: 'Pending', dueDate: ''
         });
         setShowModal(true);
@@ -52,6 +60,7 @@ export default function TasksPage() {
             taskTitle: task.TaskTitle || '',
             taskDescription: task.TaskDescription || '',
             categoryId: task.CategoryID || '',
+            projectId: task.ProjectID || '',
             plannedHours: task.PlannedHours || '',
             actualHours: task.ActualHours || '',
             priority: task.Priority || 'Medium',
@@ -64,7 +73,7 @@ export default function TasksPage() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const data = { ...form, categoryId: form.categoryId || null };
+            const data = { ...form, categoryId: form.categoryId || null, projectId: form.projectId || null };
             if (editingTask) {
                 await taskAPI.update(editingTask.TaskID, data);
             } else {
@@ -128,6 +137,7 @@ export default function TasksPage() {
                             <tr>
                                 <th>Date</th>
                                 <th>Title</th>
+                                <th>Project</th>
                                 <th>Category</th>
                                 <th>Planned</th>
                                 <th>Actual</th>
@@ -148,7 +158,13 @@ export default function TasksPage() {
                                         <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                             {t.TaskTitle}
                                         </div>
+                                        {t.AssignedByName && (
+                                            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                                Assigned by {t.AssignedByName}
+                                            </div>
+                                        )}
                                     </td>
+                                    <td style={{ fontSize: 12 }}>{t.ProjectName || '-'}</td>
                                     <td>
                                         {t.CategoryName && (
                                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
@@ -166,7 +182,7 @@ export default function TasksPage() {
                                     <td>
                                         <div className="btn-group">
                                             <button className="btn btn-ghost btn-xs" onClick={() => openEdit(t)}><Edit2 size={14} /></button>
-                                            {t.ApprovalStatus === 'Pending' && (
+                                            {t.ApprovalStatus === 'Pending' && !t.AssignedBy && (
                                                 <button className="btn btn-ghost btn-xs" style={{ color: 'var(--accent-red)' }}
                                                     onClick={() => handleDelete(t.TaskID)}><Trash2 size={14} /></button>
                                             )}
@@ -189,7 +205,7 @@ export default function TasksPage() {
                         </div>
                         <form onSubmit={handleSubmit}>
                             <div className="modal-body">
-                                <div className="form-row">
+                                <div className="form-row-3">
                                     <div className="form-group">
                                         <label className="form-label">Task Date *</label>
                                         <input type="date" className="form-input" required
@@ -203,6 +219,16 @@ export default function TasksPage() {
                                             <option value="">Select Category</option>
                                             {categories.map(c => (
                                                 <option key={c.CategoryID} value={c.CategoryID}>{c.CategoryName}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Project</label>
+                                        <select className="form-select" value={form.projectId}
+                                            onChange={e => setForm(f => ({ ...f, projectId: e.target.value }))}>
+                                            <option value="">Select Project</option>
+                                            {projects.map(p => (
+                                                <option key={p.ProjectID} value={p.ProjectID}>{p.ProjectName}</option>
                                             ))}
                                         </select>
                                     </div>

@@ -3,7 +3,7 @@ const router = express.Router();
 const { authenticateToken, authorizeManagerOrAdmin } = require('../middleware/auth');
 const {
     getTeamMembers, getTeamTasks, approveTask, approveHours,
-    getEscalations, dismissEscalation, exportTeamData, getManagerDashboardStats
+    getEscalations, dismissEscalation, exportTeamData, getManagerDashboardStats, assignTaskToResource
 } = require('../controllers/managerController');
 
 router.use(authenticateToken, authorizeManagerOrAdmin);
@@ -13,6 +13,7 @@ router.get('/team', getTeamMembers);
 router.get('/team-tasks', getTeamTasks);
 router.put('/approve-task/:taskId', approveTask);
 router.put('/approve-hours/:taskId', approveHours);
+router.post('/assign-task', assignTaskToResource);
 router.get('/escalations', getEscalations);
 router.put('/escalations/:id/dismiss', dismissEscalation);
 router.get('/export/:format', exportTeamData);

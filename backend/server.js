@@ -13,6 +13,7 @@ require('dotenv').config();
 
 const { getPool } = require('./config/database');
 const { startEscalationScheduler } = require('./services/escalationService');
+const { runMigrations } = require('./utils/runMigrations');
 
 // Route imports
 const authRoutes = require('./routes/authRoutes');
@@ -20,6 +21,7 @@ const taskRoutes = require('./routes/taskRoutes');
 const managerRoutes = require('./routes/managerRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const projectRoutes = require('./routes/projectRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -67,6 +69,7 @@ app.use('/api/tasks', taskRoutes);
 app.use('/api/manager', managerRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/projects', projectRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -105,6 +108,7 @@ async function startServer() {
         // Test database connection
         await getPool();
         console.log('[Server] Database connection established');
+        await runMigrations();
 
         // Start escalation scheduler
         startEscalationScheduler();

@@ -5,6 +5,7 @@ import LoginPage from './pages/LoginPage';
 import DashboardLayout from './components/common/DashboardLayout';
 import UserDashboard from './pages/UserDashboard';
 import TasksPage from './pages/TasksPage';
+import ProjectsPage from './pages/ProjectsPage';
 import ManagerDashboard from './pages/ManagerDashboard';
 import ManagerApprovals from './pages/ManagerApprovals';
 import ManagerTeam from './pages/ManagerTeam';
@@ -33,6 +34,7 @@ function App() {
                 <Route index element={<Navigate to="/dashboard" />} />
                 <Route path="dashboard" element={<UserDashboard />} />
                 <Route path="tasks" element={<TasksPage />} />
+                <Route path="projects" element={<ProjectsPage />} />
 
                 {/* Manager Routes */}
                 <Route path="manager" element={

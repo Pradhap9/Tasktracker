@@ -1,6 +1,32 @@
 const { query } = require('../config/database');
 const { getCurrentDateInTimeZone, getWeekBounds } = require('../utils/time');
 
+async function validateProjectAccess(projectId, currentUser) {
+    if (!projectId) return true;
+
+    const params = [projectId];
+    let whereClause = 'project_id = $1';
+
+    if (currentUser.roleName === 'Admin') {
+        whereClause += '';
+    } else if (currentUser.roleName === 'Manager') {
+        params.push(currentUser.userId);
+        whereClause += ' AND (manager_id = $2 OR assigned_to = $2)';
+    } else {
+        params.push(currentUser.userId);
+        whereClause += ' AND assigned_to = $2';
+    }
+
+    const result = await query(`
+        SELECT project_id AS "ProjectID"
+        FROM tasktracker.projects
+        WHERE ${whereClause}
+        LIMIT 1
+    `, params);
+
+    return result.rows.length > 0;
+}
+
 function buildTaskFilters(baseQuery, filters) {
     const clauses = [];
     const params = [];
@@ -15,6 +41,7 @@ function buildTaskFilters(baseQuery, filters) {
     if (filters.endDate) add(filters.endDate, (p) => `t.task_date <= ${p}`);
     if (filters.status) add(filters.status, (p) => `t.status = ${p}`);
     if (filters.approvalStatus) add(filters.approvalStatus, (p) => `t.approval_status = ${p}`);
+    if (filters.projectId) add(filters.projectId, (p) => `t.project_id = ${p}`);
 
     return {
         text: `${baseQuery}${clauses.length ? ` WHERE ${clauses.join(' AND ')}` : ''}`,
@@ -27,6 +54,7 @@ const selectTaskColumns = `
         t.task_id AS "TaskID",
         t.user_id AS "UserID",
         t.category_id AS "CategoryID",
+        t.project_id AS "ProjectID",
         t.task_date AS "TaskDate",
         t.task_title AS "TaskTitle",
         t.task_description AS "TaskDescription",
@@ -48,18 +76,24 @@ const selectTaskColumns = `
         t.updated_at AS "UpdatedAt",
         c.category_name AS "CategoryName",
         c.color_code AS "ColorCode",
+        p.project_name AS "ProjectName",
         approver.full_name AS "ApproverName",
-        hours_approver.full_name AS "HoursApproverName"
+        hours_approver.full_name AS "HoursApproverName",
+        assigner.full_name AS "AssignedByName",
+        t.assigned_by AS "AssignedBy",
+        t.assigned_at AS "AssignedAt"
     FROM tasktracker.tasks t
     LEFT JOIN tasktracker.task_categories c ON t.category_id = c.category_id
+    LEFT JOIN tasktracker.projects p ON t.project_id = p.project_id
     LEFT JOIN tasktracker.users approver ON t.approved_by = approver.user_id
     LEFT JOIN tasktracker.users hours_approver ON t.hours_approved_by = hours_approver.user_id
+    LEFT JOIN tasktracker.users assigner ON t.assigned_by = assigner.user_id
 `;
 
 const createTask = async (req, res) => {
     try {
         const {
-            categoryId, taskDate, taskTitle, taskDescription,
+            categoryId, projectId, taskDate, taskTitle, taskDescription,
             plannedHours, actualHours, priority, dueDate
         } = req.body;
         const userId = req.user.userId;
@@ -68,16 +102,22 @@ const createTask = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Task title and date are required.' });
         }
 
+        const hasProjectAccess = await validateProjectAccess(projectId, req.user);
+        if (!hasProjectAccess) {
+            return res.status(403).json({ success: false, message: 'Not authorized to use this project.' });
+        }
+
         const result = await query(`
             INSERT INTO tasktracker.tasks (
-                user_id, category_id, task_date, task_title, task_description,
+                user_id, category_id, project_id, task_date, task_title, task_description,
                 planned_hours, actual_hours, priority, due_date
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             RETURNING
                 task_id AS "TaskID",
                 user_id AS "UserID",
                 category_id AS "CategoryID",
+                project_id AS "ProjectID",
                 task_date AS "TaskDate",
                 task_title AS "TaskTitle",
                 task_description AS "TaskDescription",
@@ -94,6 +134,7 @@ const createTask = async (req, res) => {
         `, [
             userId,
             categoryId || null,
+            projectId || null,
             taskDate,
             taskTitle,
             taskDescription || null,
@@ -146,7 +187,7 @@ const createTask = async (req, res) => {
 const getTasks = async (req, res) => {
     try {
         const {
-            startDate, endDate, status, approvalStatus,
+            startDate, endDate, status, approvalStatus, projectId,
             page = 1, limit = 50
         } = req.query;
 
@@ -159,7 +200,8 @@ const getTasks = async (req, res) => {
             startDate,
             endDate,
             status,
-            approvalStatus
+            approvalStatus,
+            projectId
         });
 
         const taskResult = await query(
@@ -169,7 +211,7 @@ const getTasks = async (req, res) => {
 
         const countBase = buildTaskFilters(
             'SELECT COUNT(*)::int AS "Total" FROM tasktracker.tasks t',
-            { userId: req.user.userId, startDate, endDate, status, approvalStatus }
+            { userId: req.user.userId, startDate, endDate, status, approvalStatus, projectId }
         );
         const countResult = await query(countBase.text, countBase.params);
 
@@ -196,6 +238,7 @@ const getTaskById = async (req, res) => {
                 t.task_id AS "TaskID",
                 t.user_id AS "UserID",
                 t.category_id AS "CategoryID",
+                t.project_id AS "ProjectID",
                 t.task_date AS "TaskDate",
                 t.task_title AS "TaskTitle",
                 t.task_description AS "TaskDescription",
@@ -208,10 +251,15 @@ const getTaskById = async (req, res) => {
                 t.due_date AS "DueDate",
                 c.category_name AS "CategoryName",
                 c.color_code AS "ColorCode",
-                u.full_name AS "UserName"
+                u.full_name AS "UserName",
+                p.project_name AS "ProjectName",
+                t.assigned_by AS "AssignedBy",
+                assigner.full_name AS "AssignedByName"
             FROM tasktracker.tasks t
             LEFT JOIN tasktracker.task_categories c ON t.category_id = c.category_id
+            LEFT JOIN tasktracker.projects p ON t.project_id = p.project_id
             JOIN tasktracker.users u ON t.user_id = u.user_id
+            LEFT JOIN tasktracker.users assigner ON t.assigned_by = assigner.user_id
             WHERE t.task_id = $1 AND t.user_id = $2
             LIMIT 1
         `, [req.params.id, req.user.userId]);
@@ -230,32 +278,39 @@ const getTaskById = async (req, res) => {
 const updateTask = async (req, res) => {
     try {
         const {
-            categoryId, taskTitle, taskDescription,
+            categoryId, projectId, taskTitle, taskDescription,
             plannedHours, actualHours, priority,
             status, dueDate, taskDate
         } = req.body;
+
+        const hasProjectAccess = await validateProjectAccess(projectId, req.user);
+        if (!hasProjectAccess) {
+            return res.status(403).json({ success: false, message: 'Not authorized to use this project.' });
+        }
 
         await query(`
             UPDATE tasktracker.tasks
             SET
                 category_id = $1,
-                task_title = $2,
-                task_description = $3,
-                planned_hours = $4,
-                actual_hours = $5,
-                priority = $6,
-                status = $7,
-                due_date = $8,
-                task_date = COALESCE($9, task_date),
+                project_id = $2,
+                task_title = $3,
+                task_description = $4,
+                planned_hours = $5,
+                actual_hours = $6,
+                priority = $7,
+                status = $8,
+                due_date = $9,
+                task_date = COALESCE($10, task_date),
                 updated_at = NOW(),
                 completed_at = CASE
-                    WHEN $7 = 'Completed' AND completed_at IS NULL THEN NOW()
-                    WHEN $7 <> 'Completed' THEN NULL
+                    WHEN $8 = 'Completed' AND completed_at IS NULL THEN NOW()
+                    WHEN $8 <> 'Completed' THEN NULL
                     ELSE completed_at
                 END
-            WHERE task_id = $10 AND user_id = $11
+            WHERE task_id = $11 AND user_id = $12
         `, [
             categoryId || null,
+            projectId || null,
             taskTitle,
             taskDescription || null,
             Number(plannedHours || 0),
@@ -279,7 +334,7 @@ const deleteTask = async (req, res) => {
     try {
         await query(`
             DELETE FROM tasktracker.tasks
-            WHERE task_id = $1 AND user_id = $2 AND approval_status = 'Pending'
+            WHERE task_id = $1 AND user_id = $2 AND approval_status = 'Pending' AND assigned_by IS NULL
         `, [req.params.id, req.user.userId]);
 
         res.json({ success: true, message: 'Task deleted.' });
