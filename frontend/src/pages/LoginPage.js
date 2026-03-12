@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Lock, Mail, Eye, EyeOff } from 'lucide-react';
+import { waitForBackendWake } from '../services/api';
 
 export default function LoginPage() {
     const [email, setEmail] = useState('');
@@ -9,14 +10,49 @@ export default function LoginPage() {
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [warmingBackend, setWarmingBackend] = useState(true);
+    const [backendReady, setBackendReady] = useState(false);
+    const [statusMessage, setStatusMessage] = useState('Waking the server. This can take up to a minute on Render free tier.');
     const { login } = useAuth();
     const navigate = useNavigate();
+
+    useEffect(() => {
+        let cancelled = false;
+
+        const warmBackend = async () => {
+            setWarmingBackend(true);
+            setStatusMessage('Waking the server. This can take up to a minute on Render free tier.');
+
+            try {
+                await waitForBackendWake({ attempts: 6, delayMs: 5000, timeout: 10000 });
+                if (cancelled) return;
+                setBackendReady(true);
+                setStatusMessage('Server is ready. You can sign in now.');
+            } catch (err) {
+                if (cancelled) return;
+                setBackendReady(false);
+                setStatusMessage('Server is still sleeping. You can try signing in and the app will retry.');
+            } finally {
+                if (!cancelled) setWarmingBackend(false);
+            }
+        };
+
+        warmBackend();
+        return () => { cancelled = true; };
+    }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
         setLoading(true);
         try {
+            if (!backendReady) {
+                setStatusMessage('Connecting to the server before login...');
+                await waitForBackendWake({ attempts: 6, delayMs: 5000, timeout: 10000 });
+                setBackendReady(true);
+                setStatusMessage('Server is ready. Signing you in...');
+            }
+
             const user = await login(email, password);
             if (user.role === 'Admin') navigate('/admin');
             else if (user.role === 'Manager') navigate('/manager');
@@ -35,6 +71,10 @@ export default function LoginPage() {
                     <img src="/ubti-logo.png" alt="UB Technology Innovations" className="login-logo-image" />
                     <h2>TaskTracker</h2>
                     <p>Internal Task Management System</p>
+                </div>
+
+                <div className={`login-status ${backendReady ? 'ready' : ''}`}>
+                    {statusMessage}
                 </div>
 
                 {error && <div className="login-error">{error}</div>}
@@ -84,8 +124,8 @@ export default function LoginPage() {
                         </div>
                     </div>
 
-                    <button type="submit" className="btn btn-primary login-btn" disabled={loading}>
-                        {loading ? 'Signing in...' : 'Sign In'}
+                    <button type="submit" className="btn btn-primary login-btn" disabled={loading || warmingBackend}>
+                        {warmingBackend ? 'Preparing server...' : loading ? 'Signing in...' : 'Sign In'}
                     </button>
                 </form>
 

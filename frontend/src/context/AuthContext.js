@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
-import { authAPI, notificationAPI } from '../services/api';
+import { authAPI, healthAPI, notificationAPI } from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -30,6 +30,20 @@ export const AuthProvider = ({ children }) => {
         const interval = setInterval(fetchUnreadCount, 30000); // Poll every 30s
         return () => clearInterval(interval);
     }, [fetchUnreadCount]);
+
+    useEffect(() => {
+        if (!token) return undefined;
+
+        const keepAlive = () => {
+            if (document.visibilityState !== 'visible' || !navigator.onLine) return;
+            healthAPI.ping().catch(() => { /* ignore */ });
+        };
+
+        keepAlive();
+        const interval = setInterval(keepAlive, 5 * 60 * 1000);
+
+        return () => clearInterval(interval);
+    }, [token]);
 
     const login = async (email, password) => {
         const res = await authAPI.login({ email, password });

@@ -826,6 +826,22 @@ body {
     margin-bottom: 18px;
 }
 
+.login-status {
+    background: rgba(59, 130, 246, 0.08);
+    border: 1px solid rgba(59, 130, 246, 0.18);
+    color: var(--accent-blue);
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    margin-bottom: 18px;
+}
+
+.login-status.ready {
+    background: var(--accent-green-bg);
+    border-color: rgba(16,185,129,0.2);
+    color: var(--accent-green);
+}
+
 .login-btn {
     width: 100%;
     padding: 12px;

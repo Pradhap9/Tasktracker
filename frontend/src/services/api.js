@@ -1,6 +1,7 @@
 import axios from 'axios';
 
 const API_BASE = process.env.REACT_APP_API_URL || 'http://10.48.4.237:5000/api';
+const HEALTH_URL = API_BASE.replace(/\/api\/?$/, '/api/health');
 
 const api = axios.create({
     baseURL: API_BASE,
@@ -25,6 +26,35 @@ api.interceptors.response.use(
         return Promise.reject(error);
     }
 );
+
+async function pingHealth(timeout = 10000) {
+    return axios.get(HEALTH_URL, {
+        timeout,
+        headers: { 'Content-Type': 'application/json' }
+    });
+}
+
+export async function waitForBackendWake(options = {}) {
+    const attempts = options.attempts || 6;
+    const delayMs = options.delayMs || 5000;
+    const timeout = options.timeout || 10000;
+
+    let lastError = null;
+
+    for (let i = 0; i < attempts; i += 1) {
+        try {
+            const res = await pingHealth(timeout);
+            return res.data;
+        } catch (error) {
+            lastError = error;
+            if (i < attempts - 1) {
+                await new Promise((resolve) => setTimeout(resolve, delayMs));
+            }
+        }
+    }
+
+    throw lastError;
+}
 
 export const authAPI = {
     login: (data) => api.post('/auth/login', data),
@@ -81,6 +111,10 @@ export const notificationAPI = {
     markAsRead: (id) => api.put('/notifications/' + id + '/read'),
     markAllAsRead: () => api.put('/notifications/read-all'),
     markSoundPlayed: () => api.put('/notifications/sound-played'),
+};
+
+export const healthAPI = {
+    ping: () => pingHealth()
 };
 
 export default api;
