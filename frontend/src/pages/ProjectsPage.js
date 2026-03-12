@@ -146,8 +146,8 @@ export default function ProjectsPage() {
     return (
         <div>
             {canManageProjects && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, gap: 12, flexWrap: 'wrap' }}>
-                    <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>
+                <div className="page-toolbar">
+                    <div className="page-toolbar-copy">
                         Manage projects and assign work to your resource persons.
                     </div>
                     <div className="btn-group">
@@ -176,45 +176,47 @@ export default function ProjectsPage() {
                         <p>{canManageProjects ? 'No projects yet. Create one and assign it to a resource person.' : 'No projects have been assigned to you yet.'}</p>
                     </div>
                 ) : (
-                    <table className="data-table">
-                        <thead>
-                            <tr>
-                                <th>Project</th>
-                                <th>Assignee</th>
-                                <th>Timeline</th>
-                                <th>Priority</th>
-                                <th>Status</th>
-                                <th>Open Tasks</th>
-                                {canManageProjects && <th>Actions</th>}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {visibleProjects.map((project) => (
-                                <tr key={project.ProjectID}>
-                                    <td>
-                                        <div style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{project.ProjectName}</div>
-                                        <div style={{ fontSize: 12, color: 'var(--text-muted)', maxWidth: 280 }}>
-                                            {project.Description || 'No description'}
-                                        </div>
-                                    </td>
-                                    <td>{project.AssignedUserName || '-'}</td>
-                                    <td style={{ fontSize: 12, fontFamily: 'var(--font-mono)' }}>
-                                        {(project.StartDate ? new Date(project.StartDate).toLocaleDateString() : '-') + ' to ' + (project.EndDate ? new Date(project.EndDate).toLocaleDateString() : '-')}
-                                    </td>
-                                    <td><span className={`badge badge-${project.Priority?.toLowerCase()}`}>{project.Priority}</span></td>
-                                    <td><span className={`badge badge-${project.Status?.toLowerCase().replace(' ', '')}`}>{project.Status}</span></td>
-                                    <td style={{ fontFamily: 'var(--font-mono)' }}>{project.OpenTaskCount || 0}</td>
-                                    {canManageProjects && (
-                                        <td>
-                                            <button className="btn btn-ghost btn-xs" onClick={() => openProjectModal(project)}>
-                                                <Edit2 size={14} />
-                                            </button>
-                                        </td>
-                                    )}
+                    <div className="table-scroll">
+                        <table className="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Project</th>
+                                    <th>Assignee</th>
+                                    <th>Timeline</th>
+                                    <th>Priority</th>
+                                    <th>Status</th>
+                                    <th>Open Tasks</th>
+                                    {canManageProjects && <th>Actions</th>}
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {visibleProjects.map((project) => (
+                                    <tr key={project.ProjectID}>
+                                        <td>
+                                            <div style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{project.ProjectName}</div>
+                                            <div style={{ fontSize: 12, color: 'var(--text-muted)', maxWidth: 280 }}>
+                                                {project.Description || 'No description'}
+                                            </div>
+                                        </td>
+                                        <td>{project.AssignedUserName || '-'}</td>
+                                        <td style={{ fontSize: 12, fontFamily: 'var(--font-mono)' }}>
+                                            {(project.StartDate ? new Date(project.StartDate).toLocaleDateString() : '-') + ' to ' + (project.EndDate ? new Date(project.EndDate).toLocaleDateString() : '-')}
+                                        </td>
+                                        <td><span className={`badge badge-${project.Priority?.toLowerCase()}`}>{project.Priority}</span></td>
+                                        <td><span className={`badge badge-${project.Status?.toLowerCase().replace(' ', '')}`}>{project.Status}</span></td>
+                                        <td style={{ fontFamily: 'var(--font-mono)' }}>{project.OpenTaskCount || 0}</td>
+                                        {canManageProjects && (
+                                            <td>
+                                                <button className="btn btn-ghost btn-xs" onClick={() => openProjectModal(project)}>
+                                                    <Edit2 size={14} />
+                                                </button>
+                                            </td>
+                                        )}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 )}
             </div>
 

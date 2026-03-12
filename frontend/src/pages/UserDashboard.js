@@ -37,7 +37,7 @@ export default function UserDashboard() {
 
     return (
         <div>
-            <div style={{ background:'linear-gradient(135deg, rgba(59,130,246,0.1), rgba(139,92,246,0.08))', border:'1px solid rgba(59,130,246,0.15)', borderRadius:'var(--radius-lg)', padding:'28px 32px', marginBottom:28 }}>
+            <div className="hero-summary-card">
                 <h2 style={{ fontSize:22, fontWeight:700, marginBottom:4 }}>{greeting}, {user?.fullName?.split(' ')[0]}</h2>
                 <p style={{ color:'var(--text-muted)', fontSize:14 }}>
                     {new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' })}
@@ -78,22 +78,24 @@ export default function UserDashboard() {
                 {recentTasks.length === 0 ? (
                     <div className="empty-state"><ListTodo size={40} /><p>No tasks yet. Start by adding your first task.</p></div>
                 ) : (
-                    <table className="data-table">
-                        <thead><tr><th>Date</th><th>Title</th><th>Category</th><th>Hours</th><th>Priority</th><th>Status</th><th>Approval</th></tr></thead>
-                        <tbody>
-                            {recentTasks.map(t => (
-                                <tr key={t.TaskID}>
-                                    <td style={{ fontFamily:'var(--font-mono)', fontSize:12 }}>{new Date(t.TaskDate).toLocaleDateString()}</td>
-                                    <td style={{ color:'var(--text-primary)', fontWeight:500 }}>{t.TaskTitle}</td>
-                                    <td>{t.CategoryName && <span style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:12 }}><span style={{ width:8, height:8, borderRadius:'50%', background:t.ColorCode||'var(--accent-blue)' }} />{t.CategoryName}</span>}</td>
-                                    <td style={{ fontFamily:'var(--font-mono)' }}>{t.ActualHours}h</td>
-                                    <td><span className={'badge badge-'+t.Priority?.toLowerCase()}>{t.Priority}</span></td>
-                                    <td><span className={'badge badge-'+t.Status?.toLowerCase().replace(' ','')}>{t.Status}</span></td>
-                                    <td><span className={'badge badge-'+t.ApprovalStatus?.toLowerCase()}>{t.ApprovalStatus}</span></td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                    <div className="table-scroll">
+                        <table className="data-table">
+                            <thead><tr><th>Date</th><th>Title</th><th>Category</th><th>Hours</th><th>Priority</th><th>Status</th><th>Approval</th></tr></thead>
+                            <tbody>
+                                {recentTasks.map(t => (
+                                    <tr key={t.TaskID}>
+                                        <td style={{ fontFamily:'var(--font-mono)', fontSize:12 }}>{new Date(t.TaskDate).toLocaleDateString()}</td>
+                                        <td style={{ color:'var(--text-primary)', fontWeight:500 }}>{t.TaskTitle}</td>
+                                        <td>{t.CategoryName && <span style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:12 }}><span style={{ width:8, height:8, borderRadius:'50%', background:t.ColorCode||'var(--accent-blue)' }} />{t.CategoryName}</span>}</td>
+                                        <td style={{ fontFamily:'var(--font-mono)' }}>{t.ActualHours}h</td>
+                                        <td><span className={'badge badge-'+t.Priority?.toLowerCase()}>{t.Priority}</span></td>
+                                        <td><span className={'badge badge-'+t.Status?.toLowerCase().replace(' ','')}>{t.Status}</span></td>
+                                        <td><span className={'badge badge-'+t.ApprovalStatus?.toLowerCase()}>{t.ApprovalStatus}</span></td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 )}
             </div>
         </div>

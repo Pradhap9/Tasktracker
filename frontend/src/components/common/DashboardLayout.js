@@ -96,6 +96,17 @@ export default function DashboardLayout() {
     const hasUserInteracted = useRef(false);
     const canAccessProjects = user?.role === 'Manager' || user?.role === 'User';
 
+    useEffect(() => {
+        setSidebarOpen(false);
+    }, [location.pathname]);
+
+    useEffect(() => {
+        document.body.style.overflow = sidebarOpen ? 'hidden' : '';
+        return () => {
+            document.body.style.overflow = '';
+        };
+    }, [sidebarOpen]);
+
     // Unlock audio on ANY user interaction
     useEffect(() => {
         const handleInteraction = () => {
@@ -186,12 +197,15 @@ export default function DashboardLayout() {
     return (
         <div className="app-layout">
             <button
-                className="topbar-btn"
+                className="topbar-btn mobile-menu-toggle"
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                style={{ position: 'fixed', top: 12, left: 12, zIndex: 150, display: 'none' }}
+                aria-label={sidebarOpen ? 'Close navigation menu' : 'Open navigation menu'}
+                aria-expanded={sidebarOpen}
             >
                 {sidebarOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
+
+            {sidebarOpen && <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} />}
 
             <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
                 <div className="sidebar-header">

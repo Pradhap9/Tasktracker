@@ -101,7 +101,7 @@ export default function TasksPage() {
     return (
         <div>
             {/* Actions Bar */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <div className="page-toolbar">
                 <div className="filter-bar">
                     <input type="date" className="form-input" value={filters.startDate}
                         onChange={e => setFilters(f => ({ ...f, startDate: e.target.value }))} />
@@ -132,66 +132,68 @@ export default function TasksPage() {
                         <p>No tasks found. Click "Add Task" to get started.</p>
                     </div>
                 ) : (
-                    <table className="data-table">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Title</th>
-                                <th>Project</th>
-                                <th>Category</th>
-                                <th>Planned</th>
-                                <th>Actual</th>
-                                <th>Priority</th>
-                                <th>Status</th>
-                                <th>Approval</th>
-                                <th>Hours Approval</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {tasks.map(t => (
-                                <tr key={t.TaskID}>
-                                    <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>
-                                        {new Date(t.TaskDate).toLocaleDateString()}
-                                    </td>
-                                    <td style={{ color: 'var(--text-primary)', fontWeight: 500, maxWidth: 250 }}>
-                                        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                            {t.TaskTitle}
-                                        </div>
-                                        {t.AssignedByName && (
-                                            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                                                Assigned by {t.AssignedByName}
-                                            </div>
-                                        )}
-                                    </td>
-                                    <td style={{ fontSize: 12 }}>{t.ProjectName || '-'}</td>
-                                    <td>
-                                        {t.CategoryName && (
-                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
-                                                <span style={{ width: 8, height: 8, borderRadius: '50%', background: t.ColorCode }} />
-                                                {t.CategoryName}
-                                            </span>
-                                        )}
-                                    </td>
-                                    <td style={{ fontFamily: 'var(--font-mono)' }}>{t.PlannedHours}h</td>
-                                    <td style={{ fontFamily: 'var(--font-mono)' }}>{t.ActualHours}h</td>
-                                    <td><span className={`badge badge-${t.Priority?.toLowerCase()}`}>{t.Priority}</span></td>
-                                    <td><span className={`badge badge-${t.Status?.toLowerCase().replace(' ', '')}`}>{t.Status}</span></td>
-                                    <td><span className={`badge badge-${t.ApprovalStatus?.toLowerCase()}`}>{t.ApprovalStatus}</span></td>
-                                    <td><span className={`badge badge-${t.HoursApprovalStatus?.toLowerCase()}`}>{t.HoursApprovalStatus}</span></td>
-                                    <td>
-                                        <div className="btn-group">
-                                            <button className="btn btn-ghost btn-xs" onClick={() => openEdit(t)}><Edit2 size={14} /></button>
-                                            {t.ApprovalStatus === 'Pending' && !t.AssignedBy && (
-                                                <button className="btn btn-ghost btn-xs" style={{ color: 'var(--accent-red)' }}
-                                                    onClick={() => handleDelete(t.TaskID)}><Trash2 size={14} /></button>
-                                            )}
-                                        </div>
-                                    </td>
+                    <div className="table-scroll">
+                        <table className="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Title</th>
+                                    <th>Project</th>
+                                    <th>Category</th>
+                                    <th>Planned</th>
+                                    <th>Actual</th>
+                                    <th>Priority</th>
+                                    <th>Status</th>
+                                    <th>Approval</th>
+                                    <th>Hours Approval</th>
+                                    <th>Actions</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {tasks.map(t => (
+                                    <tr key={t.TaskID}>
+                                        <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>
+                                            {new Date(t.TaskDate).toLocaleDateString()}
+                                        </td>
+                                        <td style={{ color: 'var(--text-primary)', fontWeight: 500, maxWidth: 250 }}>
+                                            <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                {t.TaskTitle}
+                                            </div>
+                                            {t.AssignedByName && (
+                                                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                                    Assigned by {t.AssignedByName}
+                                                </div>
+                                            )}
+                                        </td>
+                                        <td style={{ fontSize: 12 }}>{t.ProjectName || '-'}</td>
+                                        <td>
+                                            {t.CategoryName && (
+                                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+                                                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: t.ColorCode }} />
+                                                    {t.CategoryName}
+                                                </span>
+                                            )}
+                                        </td>
+                                        <td style={{ fontFamily: 'var(--font-mono)' }}>{t.PlannedHours}h</td>
+                                        <td style={{ fontFamily: 'var(--font-mono)' }}>{t.ActualHours}h</td>
+                                        <td><span className={`badge badge-${t.Priority?.toLowerCase()}`}>{t.Priority}</span></td>
+                                        <td><span className={`badge badge-${t.Status?.toLowerCase().replace(' ', '')}`}>{t.Status}</span></td>
+                                        <td><span className={`badge badge-${t.ApprovalStatus?.toLowerCase()}`}>{t.ApprovalStatus}</span></td>
+                                        <td><span className={`badge badge-${t.HoursApprovalStatus?.toLowerCase()}`}>{t.HoursApprovalStatus}</span></td>
+                                        <td>
+                                            <div className="btn-group">
+                                                <button className="btn btn-ghost btn-xs" onClick={() => openEdit(t)}><Edit2 size={14} /></button>
+                                                {t.ApprovalStatus === 'Pending' && !t.AssignedBy && (
+                                                    <button className="btn btn-ghost btn-xs" style={{ color: 'var(--accent-red)' }}
+                                                        onClick={() => handleDelete(t.TaskID)}><Trash2 size={14} /></button>
+                                                )}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 )}
             </div>
 

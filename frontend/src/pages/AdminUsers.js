@@ -84,9 +84,9 @@ export default function AdminUsers() {
 
     return (
         <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
-                <div>
-                    <span style={{ fontSize: 14, color: 'var(--text-muted)' }}>
+            <div className="page-toolbar">
+                <div className="page-toolbar-copy">
+                    <span>
                         {users.length} total users | {users.filter(u => u.IsActive).length} active
                     </span>
                 </div>
@@ -96,58 +96,60 @@ export default function AdminUsers() {
             </div>
 
             <div className="data-section">
-                <table className="data-table">
-                    <thead>
-                        <tr>
-                            <th>Employee</th>
-                            <th>Code</th>
-                            <th>Email</th>
-                            <th>Role</th>
-                            <th>Manager</th>
-                            <th>Department</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {users.map(u => (
-                            <tr key={u.UserID} style={{ opacity: u.IsActive ? 1 : 0.5 }}>
-                                <td style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{u.FullName}</td>
-                                <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{u.EmployeeCode}</td>
-                                <td style={{ fontSize: 12 }}>{u.Email}</td>
-                                <td>
-                                    <span className={`badge ${u.RoleName === 'Admin' ? 'badge-critical' : u.RoleName === 'Manager' ? 'badge-inprogress' : 'badge-low'}`}>
-                                        {u.RoleName}
-                                    </span>
-                                </td>
-                                <td style={{ fontSize: 13 }}>{u.ManagerName || '-'}</td>
-                                <td>{u.Department || '-'}</td>
-                                <td>
-                                    <span className={`badge ${u.IsActive ? 'badge-approved' : 'badge-rejected'}`}>
-                                        {u.IsActive ? 'Active' : 'Inactive'}
-                                    </span>
-                                </td>
-                                <td>
-                                    <div className="btn-group">
-                                        <button className="btn btn-ghost btn-xs" onClick={() => openEdit(u)}>
-                                            <Edit2 size={14} />
-                                        </button>
-                                        <button className="btn btn-ghost btn-xs"
-                                            onClick={() => { setResetUserId(u.UserID); setShowResetModal(true); }}>
-                                            <Key size={14} />
-                                        </button>
-                                        {u.IsActive && (
-                                            <button className="btn btn-ghost btn-xs" style={{ color: 'var(--accent-red)' }}
-                                                onClick={() => handleDeactivate(u.UserID)}>
-                                                <Trash2 size={14} />
-                                            </button>
-                                        )}
-                                    </div>
-                                </td>
+                <div className="table-scroll">
+                    <table className="data-table">
+                        <thead>
+                            <tr>
+                                <th>Employee</th>
+                                <th>Code</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Manager</th>
+                                <th>Department</th>
+                                <th>Status</th>
+                                <th>Actions</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {users.map(u => (
+                                <tr key={u.UserID} style={{ opacity: u.IsActive ? 1 : 0.5 }}>
+                                    <td style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{u.FullName}</td>
+                                    <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{u.EmployeeCode}</td>
+                                    <td style={{ fontSize: 12 }}>{u.Email}</td>
+                                    <td>
+                                        <span className={`badge ${u.RoleName === 'Admin' ? 'badge-critical' : u.RoleName === 'Manager' ? 'badge-inprogress' : 'badge-low'}`}>
+                                            {u.RoleName}
+                                        </span>
+                                    </td>
+                                    <td style={{ fontSize: 13 }}>{u.ManagerName || '-'}</td>
+                                    <td>{u.Department || '-'}</td>
+                                    <td>
+                                        <span className={`badge ${u.IsActive ? 'badge-approved' : 'badge-rejected'}`}>
+                                            {u.IsActive ? 'Active' : 'Inactive'}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div className="btn-group">
+                                            <button className="btn btn-ghost btn-xs" onClick={() => openEdit(u)}>
+                                                <Edit2 size={14} />
+                                            </button>
+                                            <button className="btn btn-ghost btn-xs"
+                                                onClick={() => { setResetUserId(u.UserID); setShowResetModal(true); }}>
+                                                <Key size={14} />
+                                            </button>
+                                            {u.IsActive && (
+                                                <button className="btn btn-ghost btn-xs" style={{ color: 'var(--accent-red)' }}
+                                                    onClick={() => handleDeactivate(u.UserID)}>
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             {/* Create/Edit User Modal */}
